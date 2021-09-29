@@ -1,9 +1,9 @@
 const express = require('express');
-
+const UserRouter = require('./user/UserRouter');
 const app = express();
 
-app.post('/api/1.0.0/users', (req, res) => {
-  return res.status(200).send({ message: 'User created' });
-});
+app.use(express.json());
+
+app.use(UserRouter);
 
 module.exports = app;
