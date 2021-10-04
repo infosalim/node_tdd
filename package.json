@@ -5,19 +5,21 @@
   "main": "app.js",
   "scripts": {
     "start": "node index",
-    "dev": "nodemon index",
-    "test": "jest --watch",
+    "dev": "cross-env NODE_ENV=development nodemon index",
+    "test": "cross-env NODE_ENV=test jest --watch",
     "lint": "eslint ."
   },
   "author": "salim",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "config": "^3.3.1",
     "express": "^4.17.1",
     "sequelize": "^6.6.5",
     "sqlite3": "^5.0.2"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
@@ -50,7 +52,9 @@
           "endOfLine": "auto"
         }
       ]
-    }
+    },
+    "failOnError": false,
+    "emitWarning": true
   },
   "prettier": {
     "singleQuote": true,
