@@ -2,7 +2,7 @@ const express = require('express');
 // const bcrypt = require('bcryptjs');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
-// const User = require('./User');
+const User = require('./User');
 const UserService = require('./UserService');
 
 router.post(
@@ -13,7 +13,19 @@ router.post(
     .bail()
     .isLength({ min: 4, max: 32 })
     .withMessage('Must have min 4 and max 32 characters'),
-  check('email').notEmpty().withMessage('Email cannot be null').bail().isEmail().withMessage('Email is not valid'),
+  check('email')
+    .notEmpty()
+    .withMessage('Email cannot be null')
+    .bail()
+    .isEmail()
+    .withMessage('Email is not valid')
+    .bail()
+    .custom(async (email) => {
+      const user = await UserService.findByEmail(email);
+      if (user) {
+        throw new Error('Email in use');
+      }
+    }),
   check('password')
     .notEmpty()
     .withMessage('Password cannot be null')
@@ -30,7 +42,6 @@ router.post(
       errors.array().forEach((error) => (validationErrors[error.param] = error.msg));
       return res.status(400).send({ validationErrors: validationErrors });
     }
-
     await UserService.save(req.body);
     return res.status(200).send({ message: 'User created' });
   }
