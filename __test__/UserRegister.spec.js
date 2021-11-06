@@ -18,8 +18,12 @@ const validUser = {
   password: 'P4ssword',
 };
 
-const postUser = (user = validUser) => {
-  return request(app).post('/api/1.0/users').send(user);
+const postUser = (user = validUser, options = {}) => {
+  const agent = request(app).post('/api/1.0/users');
+  if (options.language) {
+    agent.set('Accept-Language', options.language);
+  }
+  return agent.send(user);
 };
 
 describe('User Registration', () => {
@@ -83,40 +87,32 @@ describe('User Registration', () => {
     expect(Object.keys(body.validationErrors)).toEqual(['username', 'email']);
   });
 
-  // it.each([
-  //   ['username', 'Username cannot be null'],
-  //   ['email', 'Email cannot be null'],
-  //   ['password', 'Password cannot be null'],
-  // ])('when %s is null %s is received', async (field, expectedMessage) => {
-  //   const user = {
-  //     username: 'user1',
-  //     email: 'user1@mail.com',
-  //     password: 'P4ssword',
-  //   };
-
-  //   user[field] = null;
-  //   const response = await postUser(user);
-  //   const body = response.body;
-  //   expect(body.validationErrors[field]).toBe(expectedMessage);
-  // });
+  const username_null = 'Username cannot be null';
+  const username_size = 'Must have min 4 and max 32 characters';
+  const email_null = 'Email cannot be null';
+  const email_invalid = 'Email is not valid';
+  const password_null = 'Password cannot be null';
+  const password_size = 'Password must be at least 6 characters';
+  const password_pattern = 'Password must have at least 1 uppercase, 1 lowercase letter and 1 number';
+  const email_inuse = 'Email in use';
 
   it.each`
-    field         | value              | expectedMessage
-    ${'username'} | ${null}            | ${'Username cannot be null'}
-    ${'username'} | ${'usr'}           | ${'Must have min 4 and max 32 characters'}
-    ${'username'} | ${'a'.repeat(33)}  | ${'Must have min 4 and max 32 characters'}
-    ${'email'}    | ${null}            | ${'Email cannot be null'}
-    ${'email'}    | ${'mail.com'}      | ${'Email is not valid'}
-    ${'email'}    | ${'user.mail.com'} | ${'Email is not valid'}
-    ${'email'}    | ${'user@.com'}     | ${'Email is not valid'}
-    ${'password'} | ${null}            | ${'Password cannot be null'}
-    ${'password'} | ${'P4saw'}         | ${'Password must be at least 6 characters'}
-    ${'password'} | ${'alllowercase'}  | ${'Password must have at least 1 uppercase, 1 lowercase letter and 1 number'}
-    ${'password'} | ${'ALLUPPERCASE'}  | ${'Password must have at least 1 uppercase, 1 lowercase letter and 1 number'}
-    ${'password'} | ${'1234567890'}  | ${'Password must have at least 1 uppercase, 1 lowercase letter and 1 number'}
-    ${'password'} | ${'lowerandUpper'}  | ${'Password must have at least 1 uppercase, 1 lowercase letter and 1 number'}
-    ${'password'} | ${'lowerandNumber'}  | ${'Password must have at least 1 uppercase, 1 lowercase letter and 1 number'}
-    ${'password'} | ${'UPPERandNumber'}  | ${'Password must have at least 1 uppercase, 1 lowercase letter and 1 number'}
+    field         | value               | expectedMessage
+    ${'username'} | ${null}             | ${username_null}
+    ${'username'} | ${'usr'}            | ${username_size}
+    ${'username'} | ${'a'.repeat(33)}   | ${username_size}
+    ${'email'}    | ${null}             | ${email_null}
+    ${'email'}    | ${'mail.com'}       | ${email_invalid}
+    ${'email'}    | ${'user.mail.com'}  | ${email_invalid}
+    ${'email'}    | ${'user@.com'}      | ${email_invalid}
+    ${'password'} | ${null}             | ${password_null}
+    ${'password'} | ${'P4saw'}          | ${password_size}
+    ${'password'} | ${'alllowercase'}   | ${password_pattern}
+    ${'password'} | ${'ALLUPPERCASE'}   | ${password_pattern}
+    ${'password'} | ${'1234567890'}     | ${password_pattern}
+    ${'password'} | ${'lowerandUpper'}  | ${password_pattern}
+    ${'password'} | ${'lowerandNumber'} | ${password_pattern}
+    ${'password'} | ${'UPPERandNumber'} | ${password_pattern}
   `('returns $expectedMessage when $field is $value', async ({ field, expectedMessage, value }) => {
     const user = {
       username: 'user1',
@@ -130,19 +126,75 @@ describe('User Registration', () => {
     expect(body.validationErrors[field]).toBe(expectedMessage);
   });
 
-  it('returns Email in use when same email is already in use', async () => {
+  it(`returns ${email_inuse} when same email is already in use`, async () => {
     await User.create({ ...validUser });
     const response = await postUser();
-    expect(response.body.validationErrors.email).toBe('Email in use');
+    expect(response.body.validationErrors.email).toBe(email_inuse);
   });
   it('returns errors for both username is null and email is in use', async () => {
     await User.create({ ...validUser });
     const response = await postUser({
       username: null,
       email: validUser.email,
-      password: 'P4ssword'
+      password: 'P4ssword',
     });
     const body = response.body;
     expect(Object.keys(body.validationErrors)).toEqual(['username', 'email']);
+  });
+});
+
+describe('Internationalization', () => {
+  const username_null = 'ইউসারনেম খালি থাকবে না';
+  const username_size = 'সর্বনিম্ন ৪ এবং সর্বোচ্চ ৩২ অক্ষর';
+  const email_null = 'ইমেইল খালি থাকবে না';
+  const email_invalid = 'ইমেইল সঠিক নয়';
+  const password_null = 'পাসওয়ার্ড খালি থাকবে না';
+  const password_size = 'পাসওয়ার্ড সর্বনিন্ম ৬ অক্ষর হবে';
+  const password_pattern = 'পাসওয়ার্ডে কমপক্ষে ১টি আপারকেস, ১টি লোওয়ারকেস এবং ১টি সংখ্যা থাকবে';
+  const email_inuse = 'ইমেইলটি ব্যবহৃত হচ্ছে';
+  const user_create_success = 'ইউজার তৈরী হয়েছে';
+
+  it.each`
+    field         | value               | expectedMessage
+    ${'username'} | ${null}             | ${username_null}
+    ${'username'} | ${'usr'}            | ${username_size}
+    ${'username'} | ${'a'.repeat(33)}   | ${username_size}
+    ${'email'}    | ${null}             | ${email_null}
+    ${'email'}    | ${'mail.com'}       | ${email_invalid}
+    ${'email'}    | ${'user.mail.com'}  | ${email_invalid}
+    ${'email'}    | ${'user@.com'}      | ${email_invalid}
+    ${'password'} | ${null}             | ${password_null}
+    ${'password'} | ${'P4saw'}          | ${password_size}
+    ${'password'} | ${'alllowercase'}   | ${password_pattern}
+    ${'password'} | ${'ALLUPPERCASE'}   | ${password_pattern}
+    ${'password'} | ${'1234567890'}     | ${password_pattern}
+    ${'password'} | ${'lowerandUpper'}  | ${password_pattern}
+    ${'password'} | ${'lowerandNumber'} | ${password_pattern}
+    ${'password'} | ${'UPPERandNumber'} | ${password_pattern}
+  `(
+    'returns $expectedMessage when $field is $value when language is set as Bengali',
+    async ({ field, expectedMessage, value }) => {
+      const user = {
+        username: 'user1',
+        email: 'user1@mail.com',
+        password: 'P4ssword',
+      };
+
+      user[field] = value;
+      const response = await postUser(user, { language: 'bn' });
+      const body = response.body;
+      expect(body.validationErrors[field]).toBe(expectedMessage);
+    }
+  );
+
+  it(`returns ${email_inuse} when same email is already in use when language is set as Bengali`, async () => {
+    await User.create({ ...validUser });
+    const response = await postUser({ ...validUser }, { language: 'bn' });
+    expect(response.body.validationErrors.email).toBe(email_inuse);
+  });
+
+  it(`returns success message of ${user_create_success} when signup request is valid in BN`, async () => {
+    const response = await postUser({ ...validUser }, { language: 'bn' });
+    expect(response.body.message).toBe(user_create_success);
   });
 });
